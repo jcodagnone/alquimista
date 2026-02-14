@@ -596,22 +596,38 @@ function WeighingCalc({
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
           <NerdCard>
-            <p>
-              <span className="text-foreground">Fórmula:</span> m = V × ρ
-            </p>
-            <p className="pl-4">
-              V = {data.targetMl} mL, ρ = {result.density} g/mL
-            </p>
-            <p className="pl-4">
-              m = {data.targetMl} × {result.density} = {result.massG} g
-            </p>
-            <p className="mt-2">
-              <span className="text-foreground">Factor de contracción:</span>{' '}
-              {result.contractionFactor.toFixed(6)}
-            </p>
-            <p className="text-muted-foreground text-[10px]">
-              (Volumen ideal / Volumen real)
-            </p>
+            <div className="space-y-3">
+              <div>
+                <p className="text-foreground border-b border-border/50 mb-1 pb-1 font-semibold">
+                  Modelo OIML R 22 (Wagenbreth-Blanke)
+                </p>
+                <p className="italic opacity-80">
+                  ρ(p, t) = A₁ + Σ Aₖ pᵏ⁻¹ + Σ Bₖ(Δt)ᵏ + ΣΣ Cᵢ,ⱼ pⁱ (Δt)ʲ
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-foreground font-semibold">Cálculo de Masa:</p>
+                <p className="pl-2">
+                  m = V₂₀ × ρ(p, t)
+                </p>
+                <p className="pl-2 text-[10px] opacity-70">
+                  Donde V₂₀ = {data.targetMl} mL, ρ = {result.density} g/cm³
+                </p>
+                <p className="pl-2">
+                  m = {data.targetMl} × {result.density} = {result.massG} g
+                </p>
+              </div>
+
+              <div className="pt-1">
+                <p className="text-foreground font-semibold">
+                  Contracción de Mezcla (Φ):
+                </p>
+                <p className="pl-2">
+                  Φ = (V_ideal) / (V_real) = {result.contractionFactor.toFixed(6)}
+                </p>
+              </div>
+            </div>
           </NerdCard>
         </div>
       )}
@@ -740,38 +756,55 @@ function DilutionCalc({
             />
           </div>
           <NerdCard>
-            <p>
-              <span className="text-foreground">Método gravimétrico</span>
-            </p>
-            <p>
-              W₁ = {(result.sourceMassFraction * 100).toFixed(2)}% (fracción
-              másica origen)
-            </p>
-            <p>
-              m_eth = {data.sourceMass} × {result.sourceMassFraction.toFixed(4)}{' '}
-              = {result.ethanolMassG} g
-            </p>
-            <p>
-              W₂ = {(result.targetMassFraction * 100).toFixed(2)}% (fracción
-              másica destino)
-            </p>
-            <p>
-              m_final = {result.ethanolMassG} /{' '}
-              {result.targetMassFraction.toFixed(4)} = {result.finalMassG} g
-            </p>
-            <p>
-              H₂O = {result.finalMassG} - {data.sourceMass} ={' '}
-              {result.waterToAddG} g
-            </p>
-            <div className="mt-2 border-t border-dashed pt-2">
-              <p>
-                <span className="text-foreground">Contracción (Origen):</span>{' '}
-                {result.cf1.toFixed(6)}
-              </p>
-              <p>
-                <span className="text-foreground">Contracción (Destino):</span>{' '}
-                {result.cf2.toFixed(6)}
-              </p>
+            <div className="space-y-3">
+              <div>
+                <p className="text-foreground border-b border-border/50 mb-1 pb-1 font-semibold">
+                  Balance de Masa (Etanol)
+                </p>
+                <p className="italic opacity-80">
+                  m_eth = m₁ × w₁ = m₂ × w₂
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div>
+                  <p className="text-foreground font-semibold">1. Estado Inicial:</p>
+                  <p className="pl-2">
+                    w₁ = {result.sourceMassFraction.toFixed(4)} (Fracción másica)
+                  </p>
+                  <p className="pl-2">
+                    m_eth = {data.sourceMass} × {result.sourceMassFraction.toFixed(4)} = {result.ethanolMassG} g
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-foreground font-semibold">2. Estado Final:</p>
+                  <p className="pl-2">
+                    w₂ = {result.targetMassFraction.toFixed(4)}
+                  </p>
+                  <p className="pl-2">
+                    m₂ = {result.ethanolMassG} / {result.targetMassFraction.toFixed(4)} = {result.finalMassG} g
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-foreground font-semibold">3. Agua a agregar:</p>
+                  <p className="pl-2">
+                    m_water = m₂ - m₁
+                  </p>
+                  <p className="pl-2">
+                    m_water = {result.finalMassG} - {data.sourceMass} = {result.waterToAddG} g
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-t border-dashed pt-2">
+                <p className="text-foreground text-[10px] font-semibold uppercase">
+                  Factores de Contracción (Φ)
+                </p>
+                <p className="pl-2">Φ_origen: {result.cf1.toFixed(6)}</p>
+                <p className="pl-2">Φ_destino: {result.cf2.toFixed(6)}</p>
+              </div>
             </div>
           </NerdCard>
         </div>
@@ -874,24 +907,31 @@ function HydrometerCalc({
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
           <NerdCard>
-            <p>
-              <span className="text-foreground">
-                Corrección por temperatura
-              </span>
-            </p>
-            <p>
-              Lectura: {data.readingAbv}% a {temp}°C
-            </p>
-            <p>Rango ABV: {result.abvRange}%</p>
-            <p>
-              Factor: {result.correction >= 0 ? '+' : ''}
-              {result.correction.toFixed(1)}%
-            </p>
-            <p>
-              ABV_real = {data.readingAbv} + (
-              {result.correction >= 0 ? '+' : ''}
-              {result.correction.toFixed(1)}) = {result.trueAbv.toFixed(1)}%
-            </p>
+            <div className="space-y-3">
+              <div>
+                <p className="text-foreground border-b border-border/50 mb-1 pb-1 font-semibold">
+                  Corrección por Temperatura
+                </p>
+                <p className="italic opacity-80">
+                  ρ(v_real, 20°C) = ρ(v_leído, t)
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-foreground font-semibold">Método Numérico:</p>
+                <p className="pl-2">
+                  Búsqueda iterativa (Bisección) para hallar el ABV real que
+                  iguala la densidad observada a {temp}°C.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-foreground font-semibold">Resultado:</p>
+                <p className="pl-2">Lectura: {data.readingAbv}% vol</p>
+                <p className="pl-2">Factor de corrección: {result.correction >= 0 ? '+' : ''}{result.correction.toFixed(1)}%</p>
+                <p className="pl-2 font-bold">ABV_20 = {result.trueAbv.toFixed(1)}% vol</p>
+              </div>
+            </div>
           </NerdCard>
         </div>
       )}
@@ -995,20 +1035,36 @@ function VolumeCalc({
             unit="g/mL"
           />
           <NerdCard>
-            <p>
-              <span className="text-foreground">Fórmula:</span> V = m / ρ
-            </p>
-            <p className="pl-4">
-              m = {data.mass} g, ρ = {result.density} g/mL
-            </p>
-            <p className="pl-4">
-              V = {data.mass} / {result.density} = {result.volumeMl.toFixed(2)}{' '}
-              mL
-            </p>
-            <p className="mt-2">
-              <span className="text-foreground">Factor de contracción:</span>{' '}
-              {result.contractionFactor.toFixed(6)}
-            </p>
+            <div className="space-y-3">
+              <div>
+                <p className="text-foreground border-b border-border/50 mb-1 pb-1 font-semibold">
+                  Conversión Masa a Volumen
+                </p>
+                <p className="italic opacity-80">
+                  V_t = m / ρ(p, t)
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-foreground font-semibold">Parámetros:</p>
+                <p className="pl-2">m = {data.mass} g</p>
+                <p className="pl-2">ρ = {result.density} g/cm³ (a {temp}°C)</p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-foreground font-semibold">Cálculo:</p>
+                <p className="pl-2">
+                  V = {data.mass} / {result.density} = {result.volumeMl.toFixed(2)} mL
+                </p>
+              </div>
+
+              <div className="pt-1">
+                <p className="text-foreground font-semibold">
+                  Contracción de Mezcla (Φ):
+                </p>
+                <p className="pl-2">Φ = {result.contractionFactor.toFixed(6)}</p>
+              </div>
+            </div>
           </NerdCard>
         </div>
       )}
