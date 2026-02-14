@@ -7,7 +7,6 @@ export const metadata: Metadata = {
   title: 'El Alquimista - Calculadora de Destilación',
   description:
     'Herramienta de precisión gravimétrica para destiladores artesanales',
-  generator: 'v0.app',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
