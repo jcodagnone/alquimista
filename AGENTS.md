@@ -33,10 +33,11 @@ This document serves as the primary source of truth for AI agents and developers
 
 ### Quick Commands
 
-Use `make` targets for common tasks:
+Use `make` targets or direct commands for common tasks:
 
 ```bash
 make update    # Update all dependencies
+pnpm test      # Run unit tests (Vitest)
 ```
 
 ## Git Usage
