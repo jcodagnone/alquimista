@@ -11,7 +11,7 @@ import {
 describe('OIML R 22 Density Calculations (Wagenbreth-Blanke Model)', () => {
   
   it('should calculate pure water density correctly at 20°C', () => {
-    const density = calculateWaterDensity(20);
+    const { density } = calculateDensity(0, 20);
     expect(density).toBeCloseTo(0.998201, 6);
   });
 
@@ -21,20 +21,20 @@ describe('OIML R 22 Density Calculations (Wagenbreth-Blanke Model)', () => {
   });
 
   it('should be consistent for 50% ABV at 20°C', () => {
-    const density = calculateDensity(50, 20);
+    const { density } = calculateDensity(50, 20);
     // Model value (Vacuum)
     expect(density).toBeCloseTo(0.930142, 6);
   });
 
   it('should be consistent for 96% ABV at 20°C', () => {
-    const density = calculateDensity(96, 20);
+    const { density } = calculateDensity(96, 20);
     // Model value (Vacuum)
     expect(density).toBeCloseTo(0.807419, 6);
   });
 
   it('should account for temperature expansion (96% ABV at 25°C)', () => {
-    const d20 = calculateDensity(96, 20);
-    const d25 = calculateDensity(96, 25);
+    const { density: d20 } = calculateDensity(96, 20);
+    const { density: d25 } = calculateDensity(96, 25);
     expect(d25).toBeLessThan(d20);
     expect(d25).toBeCloseTo(0.806779, 4); // Significant drop as expected
   });
@@ -47,11 +47,18 @@ describe('OIML R 22 Density Calculations (Wagenbreth-Blanke Model)', () => {
   });
 
   it('should handle extreme temperatures within safe bounds', () => {
-    const d20 = calculateDensity(96, 20);
-    const cold = calculateDensity(96, 10);
-    const hot = calculateDensity(96, 30);
+    const { density: d20 } = calculateDensity(96, 20);
+    const { density: cold } = calculateDensity(96, 10);
+    const { density: hot } = calculateDensity(96, 30);
     expect(cold).toBeGreaterThan(d20);
     expect(hot).toBeLessThan(d20);
+  });
+
+  it('should calculate contraction factor > 1 for 50% ABV', () => {
+    const { contractionFactor } = calculateDensity(50, 20);
+    // Contraction is max around 50%, should be > 1
+    expect(contractionFactor).toBeGreaterThan(1);
+    expect(contractionFactor).toBeLessThan(1.05);
   });
 });
 

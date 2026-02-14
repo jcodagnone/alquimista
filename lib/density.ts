@@ -70,17 +70,35 @@ export function abvToMassFraction(abv: number): number {
   return p;
 }
 
-export function calculateDensity(abv: number, tempC: number): number {
+export function calculateDensity(abv: number, tempC: number) {
   const p = abvToMassFraction(abv);
-  return parseFloat((rho_p_t(p, tempC) / 1000).toFixed(6));
+  const rho = rho_p_t(p, tempC) / 1000;
+  
+  // Contraction factor calculation:
+  // (V_water + V_ethanol) / V_mixture
+  // For 1g of mixture: 
+  // V_mixture = 1 / rho
+  // V_ethanol = p / rho_eth_T
+  // V_water = (1-p) / rho_wat_T
+  const rho_eth = rho_p_t(1, tempC) / 1000;
+  const rho_wat = rho_p_t(0, tempC) / 1000;
+  const v_eth = p / rho_eth;
+  const v_wat = (1 - p) / rho_wat;
+  const v_mix = 1 / rho;
+  const contractionFactor = (v_eth + v_wat) / v_mix;
+
+  return { 
+    density: parseFloat(rho.toFixed(6)), 
+    contractionFactor: parseFloat(contractionFactor.toFixed(6)) 
+  };
 }
 
 export function calculateWaterDensity(tempC: number): number {
-  return calculateDensity(0, tempC);
+  return calculateDensity(0, tempC).density;
 }
 
 export function calculateEthanolDensity(tempC: number): number {
-  return calculateDensity(100, tempC);
+  return calculateDensity(100, tempC).density;
 }
 
 export function massFractionToAbv(massFrac: number): number {
@@ -89,12 +107,12 @@ export function massFractionToAbv(massFrac: number): number {
 }
 
 export function calculateVolumeFromMass(massG: number, abv: number, tempC: number) {
-  const density = calculateDensity(abv, tempC);
-  return { volumeMl: parseFloat((massG / density).toFixed(2)), density };
+  const { density, contractionFactor } = calculateDensity(abv, tempC);
+  return { volumeMl: parseFloat((massG / density).toFixed(2)), density, contractionFactor };
 }
 
 export function calculateEthanolMass(volumeMl: number, abv: number, tempC: number) {
-  const density = calculateDensity(abv, tempC);
+  const { density } = calculateDensity(abv, tempC);
   const massFrac = abvToMassFraction(abv);
   return parseFloat((volumeMl * density * massFrac).toFixed(2));
 }

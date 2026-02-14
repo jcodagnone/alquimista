@@ -28,6 +28,7 @@ import {
   correctHydrometerReading,
   calculateVolumeFromMass,
   validateTemperature,
+  abvToMassFraction,
 } from '@/lib/density'
 
 // ============================================================================
@@ -526,8 +527,8 @@ function WeighingCalc({
     )
       return null
 
-    const density = calculateDensity(abv, t)
-    return { massG: parseFloat((targetMl * density).toFixed(2)), density }
+    const { density, contractionFactor } = calculateDensity(abv, t)
+    return { massG: parseFloat((targetMl * density).toFixed(2)), density, contractionFactor }
   }, [data, temp])
 
   return (
@@ -604,6 +605,13 @@ function WeighingCalc({
             <p className="pl-4">
               m = {data.targetMl} × {result.density} = {result.massG} g
             </p>
+            <p className="mt-2">
+              <span className="text-foreground">Factor de contracción:</span>{' '}
+              {result.contractionFactor.toFixed(6)}
+            </p>
+            <p className="text-muted-foreground text-[10px]">
+              (Volumen ideal / Volumen real)
+            </p>
           </NerdCard>
         </div>
       )}
@@ -643,7 +651,12 @@ function DilutionCalc({
     )
       return null
 
-    return calculateDilutionWater(sourceMass, sourceAbv, targetAbv)
+    const p1 = abvToMassFraction(sourceAbv);
+    const p2 = abvToMassFraction(targetAbv);
+    const res = calculateDilutionWater(sourceMass, sourceAbv, targetAbv);
+    const { contractionFactor: cf1 } = calculateDensity(sourceAbv, t);
+    const { contractionFactor: cf2 } = calculateDensity(targetAbv, t);
+    return { ...res, cf1, cf2 };
   }, [data, temp])
 
   const isMassLinked = data.sourceMass !== ''
@@ -750,6 +763,16 @@ function DilutionCalc({
               H₂O = {result.finalMassG} - {data.sourceMass} ={' '}
               {result.waterToAddG} g
             </p>
+            <div className="mt-2 border-t border-dashed pt-2">
+              <p>
+                <span className="text-foreground">Contracción (Origen):</span>{' '}
+                {result.cf1.toFixed(6)}
+              </p>
+              <p>
+                <span className="text-foreground">Contracción (Destino):</span>{' '}
+                {result.cf2.toFixed(6)}
+              </p>
+            </div>
           </NerdCard>
         </div>
       )}
@@ -981,6 +1004,10 @@ function VolumeCalc({
             <p className="pl-4">
               V = {data.mass} / {result.density} = {result.volumeMl.toFixed(2)}{' '}
               mL
+            </p>
+            <p className="mt-2">
+              <span className="text-foreground">Factor de contracción:</span>{' '}
+              {result.contractionFactor.toFixed(6)}
             </p>
           </NerdCard>
         </div>
