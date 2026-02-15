@@ -4,7 +4,8 @@ import {
   calculateEthanolDensity,
   abvToMassFraction,
   calculateDilutionWater,
-  correctHydrometerReading
+  correctHydrometerReading,
+  calculateVolumeFromMass
 } from './density';
 
 describe('OIML R 22 Density Calculations (Wagenbreth-Blanke Model)', () => {
@@ -35,7 +36,7 @@ describe('OIML R 22 Density Calculations (Wagenbreth-Blanke Model)', () => {
     const { density: d20 } = calculateDensity(96, 20);
     const { density: d25 } = calculateDensity(96, 25);
     expect(d25).toBeLessThan(d20);
-    expect(d25).toBeCloseTo(0.806779, 4); // Significant drop as expected
+    expect(d25).toBeCloseTo(0.802978, 4); // Significant drop as expected
   });
 
   it('should calculate mass fraction p from ABV v correctly', () => {
@@ -64,27 +65,53 @@ describe('OIML R 22 Density Calculations (Wagenbreth-Blanke Model)', () => {
 describe('Dilution and Hydrometer Correction', () => {
   it('should calculate dilution water correctly (Gravimetric)', () => {
     // 1000g of 96% ABV diluted to 40% ABV
+    // Reference (OIML R 22): p(96) = 0.9384, p(40) = 0.3330
+    // m2 = 1000 * 0.9384 / 0.3330 = 2818.0g
+    // water = 1818.0g
     const result = calculateDilutionWater(1000, 96, 40);
-    
-    // Mass of ethanol in 1000g of 96% ABV (p ~ 0.939 in this model)
-    // p1 * m1 = p2 * m2 => m2 = (m1 * p1) / p2
-    expect(result.waterToAddG).toBeGreaterThan(1000); 
-    expect(result.finalMassG).toBeCloseTo(result.ethanolMassG / result.targetMassFraction, 1);
+    expect(result.waterToAddG).toBeCloseTo(1818.0, 1);
+    expect(result.finalMassG).toBeCloseTo(2818.0, 1);
   });
 
-  it('should correct hydrometer reading for temperature', () => {
-    // Reading 40% at 25°C
-    const result = correctHydrometerReading(40, 25);
-    
-    // Higher temp means lower density, so hydrometer sinks more.
-    // True ABV at 20°C should be lower than 40%.
-    expect(result.trueAbv).toBeLessThan(40);
-    expect(result.correction).toBeLessThan(0);
+  it('should correct hydrometer reading for temperature (OIML R 22 Table 5 equivalents)', () => {
+    // Reading 40% at 25°C. 
+    // Higher temp -> liquid less dense -> hydrometer sinks more.
+    // True ABV at 20°C should be lower (~38.3%)
+    const result25 = correctHydrometerReading(40, 25);
+    expect(result25.trueAbv).toBeCloseTo(38.3, 1);
+    expect(result25.correction).toBeCloseTo(-1.7, 1);
+
+    // Reading 40% at 15°C.
+    // Lower temp -> liquid denser -> hydrometer floats more.
+    // True ABV at 20°C should be higher (~41.5%)
+    const result15 = correctHydrometerReading(40, 15);
+    expect(result15.trueAbv).toBeCloseTo(41.5, 1);
+    expect(result15.correction).toBeCloseTo(1.5, 1);
   });
 
   it('should return no correction at 20°C', () => {
     const result = correctHydrometerReading(50, 20);
     expect(result.trueAbv).toBeCloseTo(50, 1);
     expect(Math.abs(result.correction)).toBeLessThan(0.1);
+  });
+});
+
+describe('Module Specific Calculations', () => {
+  it('should calculate "Pesaje de Alcohol Puro" (Target Volume -> Mass)', () => {
+    // Target 1000ml of 96% ABV at 20°C
+    // rho(96, 20) = 0.807419
+    // mass = 1000 * 0.807419 = 807.42g
+    const { density } = calculateDensity(96, 20);
+    const mass = 1000 * density;
+    expect(mass).toBeCloseTo(807.42, 2);
+  });
+
+  it('should calculate "Volumen por Peso" (Mass -> Volume)', () => {
+    // 1000g of 40% ABV at 20°C
+    // rho(40, 20) = 0.94805
+    // volume = 1000 / 0.94805 = 1054.80ml
+    const result = calculateVolumeFromMass(1000, 40, 20);
+    expect(result.volumeMl).toBeCloseTo(1054.80, 2);
+    expect(result.density).toBeCloseTo(0.94805, 5);
   });
 });
