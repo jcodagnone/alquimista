@@ -28,7 +28,6 @@ import {
   correctHydrometerReading,
   calculateVolumeFromMass,
   validateTemperature,
-  abvToMassFraction,
 } from '@/lib/density'
 
 // ============================================================================
@@ -287,12 +286,17 @@ export default function Home() {
     []
   )
 
-  // Flow: Weighing -> Dilution
-  const useWeighingInDilution = useCallback((massG: string, abv: string) => {
+  // Flow: Weighing/Volume -> Dilution
+  const useInDilution = useCallback((massG: string, abv: string) => {
     setState((s) => ({
       ...s,
       module: 'dilution',
-      dilution: { ...s.dilution, sourceMass: massG, sourceAbv: abv },
+      dilution: {
+        ...s.dilution,
+        sourceMass: massG,
+        sourceAbv: abv,
+        targetAbv: s.dilution.targetAbv === '60' ? '40' : s.dilution.targetAbv,
+      },
     }))
   }, [])
 
@@ -394,6 +398,20 @@ export default function Home() {
               icon={m.icon}
               active={state.module === m.id}
               onClick={() => updateModule(m.id)}
+              onDrop={(e) => {
+                const raw = e.dataTransfer.getData('application/json')
+                if (!raw) return
+                try {
+                  const payload = JSON.parse(raw)
+                  if (m.id === 'dilution' && payload.mass && payload.abv) {
+                    useInDilution(payload.mass, payload.abv)
+                  } else if (m.id === 'volume' && payload.abv) {
+                    useHydrometerInVolume(payload.abv)
+                  }
+                } catch (err) {
+                  console.error('Failed to parse drop data', err)
+                }
+              }}
             />
           ))}
         </nav>
@@ -416,7 +434,7 @@ export default function Home() {
               onFetchGeo={fetchGeoTemp}
               isLoadingGeo={isLoadingGeo}
               geoError={geoError}
-              onUseDilution={useWeighingInDilution}
+              onUseDilution={useInDilution}
             />
           )}
 
@@ -454,6 +472,7 @@ export default function Home() {
               onFetchGeo={fetchGeoTemp}
               isLoadingGeo={isLoadingGeo}
               geoError={geoError}
+              onUseDilution={useInDilution}
             />
           )}
         </section>
@@ -580,6 +599,7 @@ function WeighingCalc({
             })}
             unit="g"
             highlight
+            dragData={{ mass: result.massG.toString(), abv: data.abv }}
           />
           <ResultDisplay
             label="Densidad de la mezcla"
@@ -667,8 +687,6 @@ function DilutionCalc({
     )
       return null
 
-    const p1 = abvToMassFraction(sourceAbv);
-    const p2 = abvToMassFraction(targetAbv);
     const res = calculateDilutionWater(sourceMass, sourceAbv, targetAbv);
     const { contractionFactor: cf1 } = calculateDensity(sourceAbv, t);
     const { contractionFactor: cf2 } = calculateDensity(targetAbv, t);
@@ -683,7 +701,7 @@ function DilutionCalc({
         <div className="border-primary/30 bg-primary/5 flex items-start gap-3 rounded-lg border p-3">
           <Info className="text-primary mt-0.5 h-4 w-4 shrink-0" />
           <p className="text-muted-foreground text-xs">
-            Podés vincular la masa desde el pesaje de alcohol puro.
+            Podés vincular la masa desde el pesaje de alcohol puro o volumen por peso.
           </p>
         </div>
       )}
@@ -887,6 +905,7 @@ function HydrometerCalc({
             value={result.trueAbv.toFixed(1)}
             unit="%"
             highlight
+            dragData={{ abv: result.trueAbv.toString() }}
           />
           <ResultDisplay
             label="Corrección aplicada"
@@ -949,7 +968,10 @@ function VolumeCalc({
   onFetchGeo,
   isLoadingGeo,
   geoError,
-}: CalcProps<AppState['volume']>) {
+  onUseDilution,
+}: CalcProps<AppState['volume']> & {
+  onUseDilution: (massG: string, abv: string) => void
+}) {
   const tempVal = validateTemperature(parseFloat(temp) || 20)
 
   const result = useMemo(() => {
@@ -1028,12 +1050,22 @@ function VolumeCalc({
             })}
             unit="mL"
             highlight
+            dragData={{ mass: data.mass, abv: data.abv }}
           />
           <ResultDisplay
             label="Densidad de la mezcla"
             value={result.density.toFixed(4)}
             unit="g/mL"
           />
+          <Button
+            onClick={() => onUseDilution(data.mass, data.abv)}
+            variant="secondary"
+            size="lg"
+            className="w-full"
+          >
+            <span>Usar en Dilución</span>
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
           <NerdCard>
             <div className="space-y-3">
               <div>
