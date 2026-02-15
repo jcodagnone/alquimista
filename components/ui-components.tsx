@@ -174,6 +174,7 @@ interface ResultDisplayProps {
   unit?: string
   highlight?: boolean
   className?: string
+  dragData?: Record<string, string>
 }
 
 export function ResultDisplay({
@@ -182,12 +183,21 @@ export function ResultDisplay({
   unit,
   highlight = false,
   className,
+  dragData,
 }: ResultDisplayProps) {
   return (
     <div
+      draggable={!!dragData}
+      onDragStart={(e) => {
+        if (dragData) {
+          e.dataTransfer.setData('application/json', JSON.stringify(dragData))
+          e.dataTransfer.effectAllowed = 'copy'
+        }
+      }}
       className={cn(
         'rounded-lg border p-4',
         highlight ? 'border-primary bg-primary/10' : 'border-border bg-card',
+        dragData && 'cursor-grab active:cursor-grabbing',
         className
       )}
     >
@@ -263,6 +273,7 @@ interface ModuleCardProps {
   icon: LucideIcon
   active?: boolean
   onClick?: () => void
+  onDrop?: (e: React.DragEvent) => void
 }
 
 export function ModuleCard({
@@ -271,15 +282,33 @@ export function ModuleCard({
   icon: Icon,
   active = false,
   onClick,
+  onDrop,
 }: ModuleCardProps) {
+  const [isDragOver, setIsDragOver] = useState(false)
+
   return (
     <button
       type="button"
       onClick={onClick}
+      onDragOver={(e) => {
+        if (onDrop) {
+          e.preventDefault()
+          setIsDragOver(true)
+        }
+      }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={(e) => {
+        if (onDrop) {
+          e.preventDefault()
+          setIsDragOver(false)
+          onDrop(e)
+        }
+      }}
       className={cn(
         'flex w-full items-start gap-4 rounded-lg border p-4 text-left transition-all',
         'hover:border-primary/50 hover:bg-primary/5',
-        active ? 'border-primary bg-primary/10' : 'border-border bg-card'
+        active ? 'border-primary bg-primary/10' : 'border-border bg-card',
+        isDragOver && 'border-primary ring-primary/20 bg-primary/20 ring-2'
       )}
     >
       <div
