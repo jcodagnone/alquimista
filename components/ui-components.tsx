@@ -43,6 +43,11 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           <input
             ref={ref}
             id={inputId}
+            name={inputId}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
             className={cn(
               'bg-input text-foreground w-full rounded-lg border px-4 py-3 font-mono text-lg',
               'placeholder:text-muted-foreground',
@@ -113,9 +118,13 @@ export function TemperatureField({
         <div className="relative max-w-[180px]">
           <input
             id="temperatura"
-            type="number"
+            name="temperatura"
+            type="text"
             inputMode="decimal"
-            step="0.1"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
             placeholder="20"
             value={value}
             onChange={onChange}

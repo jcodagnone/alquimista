@@ -243,14 +243,14 @@ export default function Home() {
   }, [])
 
   const updateTemp = useCallback((temp: string) => {
-    setState((s) => ({ ...s, temp }))
+    setState((s) => ({ ...s, temp: temp.replace(',', '.') }))
   }, [])
 
   const updateWeighing = useCallback(
     (field: keyof AppState['weighing'], value: string) => {
       setState((s) => ({
         ...s,
-        weighing: { ...s.weighing, [field]: value },
+        weighing: { ...s.weighing, [field]: value.replace(',', '.') },
       }))
     },
     []
@@ -260,7 +260,7 @@ export default function Home() {
     (field: keyof AppState['dilution'], value: string) => {
       setState((s) => ({
         ...s,
-        dilution: { ...s.dilution, [field]: value },
+        dilution: { ...s.dilution, [field]: value.replace(',', '.') },
       }))
     },
     []
@@ -270,7 +270,7 @@ export default function Home() {
     (field: keyof AppState['hydrometer'], value: string) => {
       setState((s) => ({
         ...s,
-        hydrometer: { ...s.hydrometer, [field]: value },
+        hydrometer: { ...s.hydrometer, [field]: value.replace(',', '.') },
       }))
     },
     []
@@ -280,7 +280,7 @@ export default function Home() {
     (field: keyof AppState['volume'], value: string) => {
       setState((s) => ({
         ...s,
-        volume: { ...s.volume, [field]: value },
+        volume: { ...s.volume, [field]: value.replace(',', '.') },
       }))
     },
     []
@@ -555,7 +555,7 @@ function WeighingCalc({
       <div className="space-y-4">
         <InputField
           label="Volumen objetivo"
-          type="number"
+          type="text"
           inputMode="decimal"
           step="1"
           placeholder="1000"
@@ -567,7 +567,7 @@ function WeighingCalc({
         />
         <InputField
           label="Grado alcohólico (ABV)"
-          type="number"
+          type="text"
           inputMode="decimal"
           step="0.1"
           min="0"
@@ -709,7 +709,7 @@ function DilutionCalc({
       <div className="space-y-4">
         <InputField
           label="Masa del alcohol base"
-          type="number"
+          type="text"
           inputMode="decimal"
           step="0.1"
           placeholder="0.0"
@@ -722,7 +722,7 @@ function DilutionCalc({
         <div className="grid grid-cols-2 gap-4">
           <InputField
             label="ABV inicial"
-            type="number"
+            type="text"
             inputMode="decimal"
             step="0.1"
             placeholder="96"
@@ -732,7 +732,7 @@ function DilutionCalc({
           />
           <InputField
             label="ABV objetivo"
-            type="number"
+            type="text"
             inputMode="decimal"
             step="0.1"
             placeholder="60"
@@ -869,7 +869,7 @@ function HydrometerCalc({
       <div className="space-y-4">
         <InputField
           label="Lectura del alcoholímetro"
-          type="number"
+          type="text"
           inputMode="decimal"
           step="0.1"
           placeholder="80"
@@ -1010,7 +1010,7 @@ function VolumeCalc({
       <div className="space-y-4">
         <InputField
           label="Masa"
-          type="number"
+          type="text"
           inputMode="decimal"
           step="0.1"
           placeholder="0.0"
@@ -1021,7 +1021,7 @@ function VolumeCalc({
         />
         <InputField
           label="Grado alcohólico (ABV)"
-          type="number"
+          type="text"
           inputMode="decimal"
           step="0.1"
           placeholder="40"
