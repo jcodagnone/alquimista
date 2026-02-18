@@ -25,6 +25,7 @@ import {
 import {
   calculateDensity,
   calculateDilutionWater,
+  calculateTargetVolumeDilution,
   correctHydrometerReading,
   calculateVolumeFromMass,
   validateTemperature,
@@ -40,7 +41,13 @@ interface AppState {
   module: ModuleId
   temp: string // shared across all modules
   weighing: { targetMl: string; abv: string }
-  dilution: { sourceMass: string; sourceAbv: string; targetAbv: string }
+  dilution: { 
+    mode: 'source-mass' | 'target-volume'
+    sourceMass: string 
+    sourceAbv: string 
+    targetAbv: string 
+    targetMl: string
+  }
   hydrometer: { readingAbv: string }
   volume: { mass: string; abv: string }
 }
@@ -49,7 +56,13 @@ const DEFAULT_STATE: AppState = {
   module: 'weighing',
   temp: '20',
   weighing: { targetMl: '', abv: '96' },
-  dilution: { sourceMass: '', sourceAbv: '96', targetAbv: '60' },
+  dilution: { 
+    mode: 'source-mass',
+    sourceMass: '', 
+    sourceAbv: '96', 
+    targetAbv: '60',
+    targetMl: '1000'
+  },
   hydrometer: { readingAbv: '80' },
   volume: { mass: '', abv: '' },
 }
@@ -95,7 +108,9 @@ function encodeState(state: AppState): string {
   parts.push(
     state.dilution.sourceMass || '_',
     state.dilution.sourceAbv || '_',
-    state.dilution.targetAbv || '_'
+    state.dilution.targetAbv || '_',
+    state.dilution.mode || '_',
+    state.dilution.targetMl || '_'
   )
 
   // Add hydrometer data
@@ -125,13 +140,15 @@ function decodeState(hash: string): AppState {
       sourceMass: get(4, ''),
       sourceAbv: get(5, '96'),
       targetAbv: get(6, '60'),
+      mode: (get(7, 'source-mass') as 'source-mass' | 'target-volume') || 'source-mass',
+      targetMl: get(8, '1000'),
     },
     hydrometer: {
-      readingAbv: get(7, '80'),
+      readingAbv: get(9, '80'),
     },
     volume: {
-      mass: get(8, ''),
-      abv: get(9, ''),
+      mass: get(10, ''),
+      abv: get(11, ''),
     },
   }
 }
@@ -293,6 +310,7 @@ export default function Home() {
       module: 'dilution',
       dilution: {
         ...s.dilution,
+        mode: 'source-mass',
         sourceMass: massG,
         sourceAbv: abv,
         targetAbv: s.dilution.targetAbv === '60' ? '40' : s.dilution.targetAbv,
@@ -666,15 +684,16 @@ function DilutionCalc({
   isLoadingGeo,
   geoError,
 }: CalcProps<AppState['dilution']>) {
+  const mode = data.mode || 'source-mass'
+
   const result = useMemo(() => {
-    const sourceMass = parseFloat(data.sourceMass)
     const sourceAbv = parseFloat(data.sourceAbv)
     const targetAbv = parseFloat(data.targetAbv)
     const t = parseFloat(temp)
+    const targetMl = parseFloat(data.targetMl)
+    const sourceMass = parseFloat(data.sourceMass)
 
     if (
-      isNaN(sourceMass) ||
-      sourceMass <= 0 ||
       isNaN(sourceAbv) ||
       sourceAbv <= 0 ||
       sourceAbv > 100 ||
@@ -687,38 +706,105 @@ function DilutionCalc({
     )
       return null
 
-    const res = calculateDilutionWater(sourceMass, sourceAbv, targetAbv);
-    const { contractionFactor: cf1 } = calculateDensity(sourceAbv, t);
-    const { contractionFactor: cf2 } = calculateDensity(targetAbv, t);
-    return { ...res, cf1, cf2 };
-  }, [data, temp])
+    if (mode === 'target-volume') {
+      if (isNaN(targetMl) || targetMl <= 0) return null
+      const res = calculateTargetVolumeDilution(targetMl, targetAbv, sourceAbv, t)
+      const { contractionFactor: cf1 } = calculateDensity(sourceAbv, t)
+      const { contractionFactor: cf2 } = calculateDensity(targetAbv, t)
+      return { ...res, cf1, cf2, type: 'target-volume' as const }
+    } else {
+      if (isNaN(sourceMass) || sourceMass <= 0) return null
+      const res = calculateDilutionWater(sourceMass, sourceAbv, targetAbv)
+      const { contractionFactor: cf1 } = calculateDensity(sourceAbv, t)
+      const { contractionFactor: cf2 } = calculateDensity(targetAbv, t)
+      return { ...res, cf1, cf2, type: 'source-mass' as const }
+    }
+  }, [data, temp, mode])
 
-  const isMassLinked = data.sourceMass !== ''
+  const isMassLinked = data.sourceMass !== '' && mode === 'source-mass'
 
   return (
     <div className="space-y-6">
+      {/* Mode Toggle */}
+      <div className="space-y-3">
+        <div className="bg-muted p-1 rounded-lg flex">
+          <button
+            className={`flex-1 text-sm font-medium py-1.5 px-3 rounded-md transition-all ${
+              mode === 'source-mass'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => onUpdate('mode', 'source-mass')}
+          >
+            Diluir Alcohol Base
+          </button>
+          <button
+            className={`flex-1 text-sm font-medium py-1.5 px-3 rounded-md transition-all ${
+              mode === 'target-volume'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            onClick={() => onUpdate('mode', 'target-volume')}
+          >
+            Alcanzar Volumen
+          </button>
+        </div>
+        
+        <div className="text-muted-foreground text-xs px-1">
+          {mode === 'source-mass' ? (
+            <p>
+              Calcula cuánta agua agregar a una cantidad fija de alcohol para bajar su graduación. 
+              Ideal cuando tenés un resto de alcohol y lo querés aprovechar todo.
+            </p>
+          ) : (
+            <p>
+              Calcula cuánto alcohol y agua mezclar para obtener un volumen final exacto. 
+              Ideal para llenar botellas específicas (ej: 750mL, 1 Litro) o para recetas
+              que arrancan con 1 Litro de alcohol base a 60 ABV.
+            </p>
+          )}
+        </div>
+      </div>
+
       {isMassLinked && (
         <div className="border-primary/30 bg-primary/5 flex items-start gap-3 rounded-lg border p-3">
           <Info className="text-primary mt-0.5 h-4 w-4 shrink-0" />
           <p className="text-muted-foreground text-xs">
-            Podés vincular la masa desde el pesaje de alcohol puro o volumen por peso.
+            Podés vincular la masa desde el pesaje de alcohol puro o volumen por
+            peso.
           </p>
         </div>
       )}
 
       <div className="space-y-4">
-        <InputField
-          label="Masa del alcohol base"
-          type="text"
-          inputMode="decimal"
-          step="0.1"
-          placeholder="0.0"
-          unit="g"
-          value={data.sourceMass}
-          onChange={(e) => onUpdate('sourceMass', e.target.value)}
-          hint="Peso del espíritu a diluir"
-          maxWidth="max-w-[200px]"
-        />
+        {mode === 'source-mass' ? (
+          <InputField
+            label="Masa del alcohol base"
+            type="text"
+            inputMode="decimal"
+            step="0.1"
+            placeholder="0.0"
+            unit="g"
+            value={data.sourceMass}
+            onChange={(e) => onUpdate('sourceMass', e.target.value)}
+            hint="Peso del espíritu a diluir"
+            maxWidth="max-w-[200px]"
+          />
+        ) : (
+          <InputField
+            label="Volumen Final Objetivo"
+            type="text"
+            inputMode="decimal"
+            step="1"
+            placeholder="1000"
+            unit="mL"
+            value={data.targetMl}
+            onChange={(e) => onUpdate('targetMl', e.target.value)}
+            hint="Volumen total que querés obtener"
+            maxWidth="max-w-[200px]"
+          />
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <InputField
             label="ABV inicial"
@@ -752,15 +838,39 @@ function DilutionCalc({
 
       {result && (
         <div className="border-border space-y-4 border-t pt-4">
-          <ResultDisplay
-            label="Agua a agregar"
-            value={result.waterToAddG.toLocaleString('es-UY', {
-              minimumFractionDigits: 1,
-              maximumFractionDigits: 1,
-            })}
-            unit="g"
-            highlight
-          />
+          {result.type === 'target-volume' ? (
+             <div className="grid grid-cols-2 gap-4">
+                <ResultDisplay
+                  label="Alcohol Base (g)"
+                  value={(result as any).sourceMassG.toLocaleString('es-UY', {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                  })}
+                  unit="g"
+                  highlight
+                />
+                <ResultDisplay
+                  label="Agua (g)"
+                  value={result.waterToAddG.toLocaleString('es-UY', {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                  })}
+                  unit="g"
+                  highlight
+                />
+             </div>
+          ) : (
+             <ResultDisplay
+              label="Agua a agregar"
+              value={result.waterToAddG.toLocaleString('es-UY', {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+              })}
+              unit="g"
+              highlight
+            />
+          )}
+         
           <div className="grid grid-cols-2 gap-4">
             <ResultDisplay
               label="Masa final"
@@ -784,37 +894,89 @@ function DilutionCalc({
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <div>
-                  <p className="text-foreground font-semibold">1. Estado Inicial:</p>
-                  <p className="pl-2">
-                    w₁ = {result.sourceMassFraction.toFixed(4)} (Fracción másica)
-                  </p>
-                  <p className="pl-2">
-                    m_eth = {data.sourceMass} × {result.sourceMassFraction.toFixed(4)} = {result.ethanolMassG} g
-                  </p>
+              {result.type === 'target-volume' ? (
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-foreground font-semibold">
+                      1. Objetivo (m₂):
+                    </p>
+                    <p className="pl-2">
+                      V_obj = {data.targetMl} mL, ABV = {data.targetAbv}%
+                    </p>
+                    <p className="pl-2">
+                      ρ_obj = {(result as any).targetDensity.toFixed(4)} g/mL
+                    </p>
+                    <p className="pl-2">
+                      m₂ = {data.targetMl} × {(result as any).targetDensity.toFixed(4)} ={' '}
+                      {result.finalMassG} g
+                    </p>
+                  </div>
+                   <div>
+                    <p className="text-foreground font-semibold">
+                      2. Etanol Necesario:
+                    </p>
+                    <p className="pl-2">
+                      w₂ = {result.targetMassFraction.toFixed(4)}
+                    </p>
+                    <p className="pl-2">
+                      m_eth = {result.finalMassG} × {result.targetMassFraction.toFixed(4)} = {result.ethanolMassG} g
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-foreground font-semibold">
+                      3. Alcohol Base Requerido (m₁):
+                    </p>
+                    <p className="pl-2">
+                       w₁ = {result.sourceMassFraction.toFixed(4)}
+                    </p>
+                    <p className="pl-2">
+                      m₁ = {result.ethanolMassG} / {result.sourceMassFraction.toFixed(4)} = {(result as any).sourceMassG} g
+                    </p>
+                  </div>
                 </div>
+              ) : (
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-foreground font-semibold">
+                      1. Estado Inicial:
+                    </p>
+                    <p className="pl-2">
+                      w₁ = {result.sourceMassFraction.toFixed(4)} (Fracción
+                      másica)
+                    </p>
+                    <p className="pl-2">
+                      m_eth = {data.sourceMass} ×{' '}
+                      {result.sourceMassFraction.toFixed(4)} ={' '}
+                      {result.ethanolMassG} g
+                    </p>
+                  </div>
 
-                <div>
-                  <p className="text-foreground font-semibold">2. Estado Final:</p>
-                  <p className="pl-2">
-                    w₂ = {result.targetMassFraction.toFixed(4)}
-                  </p>
-                  <p className="pl-2">
-                    m₂ = {result.ethanolMassG} / {result.targetMassFraction.toFixed(4)} = {result.finalMassG} g
-                  </p>
-                </div>
+                  <div>
+                    <p className="text-foreground font-semibold">
+                      2. Estado Final:
+                    </p>
+                    <p className="pl-2">
+                      w₂ = {result.targetMassFraction.toFixed(4)}
+                    </p>
+                    <p className="pl-2">
+                      m₂ = {result.ethanolMassG} /{' '}
+                      {result.targetMassFraction.toFixed(4)} ={' '}
+                      {result.finalMassG} g
+                    </p>
+                  </div>
 
-                <div>
-                  <p className="text-foreground font-semibold">3. Agua a agregar:</p>
-                  <p className="pl-2">
-                    m_water = m₂ - m₁
-                  </p>
-                  <p className="pl-2">
-                    m_water = {result.finalMassG} - {data.sourceMass} = {result.waterToAddG} g
-                  </p>
+                  <div>
+                    <p className="text-foreground font-semibold">
+                      3. Agua a agregar:
+                    </p>
+                    <p className="pl-2">m_water = m₂ - m₁</p>
+                    <p className="pl-2">
+                      m_water = {result.finalMassG} - {data.sourceMass} ={' '}
+                      {result.waterToAddG} g
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="border-t border-dashed pt-2">
                 <p className="text-foreground text-[10px] font-semibold uppercase">

@@ -128,6 +128,30 @@ export function calculateDilutionWater(sourceMassG: number, sourceAbv: number, t
   };
 }
 
+export function calculateTargetVolumeDilution(targetVolumeMl: number, targetAbv: number, sourceAbv: number, tempC: number) {
+  const { density: targetRho } = calculateDensity(targetAbv, tempC);
+  const targetMassG = targetVolumeMl * targetRho;
+  
+  const p1 = abvToMassFraction(sourceAbv); // Source mass fraction
+  const p2 = abvToMassFraction(targetAbv); // Target mass fraction
+
+  // m_eth = m_target * p2
+  // m_source = m_eth / p1
+  const ethanolMassG = targetMassG * p2;
+  const sourceMassG = ethanolMassG / p1;
+  const waterToAddG = targetMassG - sourceMassG;
+
+  return {
+    sourceMassG: parseFloat(sourceMassG.toFixed(1)),
+    waterToAddG: parseFloat(waterToAddG.toFixed(1)),
+    finalMassG: parseFloat(targetMassG.toFixed(1)),
+    ethanolMassG: parseFloat(ethanolMassG.toFixed(2)),
+    targetDensity: targetRho,
+    sourceMassFraction: parseFloat(p1.toFixed(4)),
+    targetMassFraction: parseFloat(p2.toFixed(4)),
+  };
+}
+
 export function getHydrometerCorrection(readingAbv: number, tempC: number) {
   // OIML R 22 Section 14: Hydrometers
   // rho(V', 20) = rho(q, t) * [1 - alpha * (t - 20)]

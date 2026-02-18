@@ -4,6 +4,7 @@ import {
   calculateEthanolDensity,
   abvToMassFraction,
   calculateDilutionWater,
+  calculateTargetVolumeDilution,
   correctHydrometerReading,
   calculateVolumeFromMass
 } from './density';
@@ -93,6 +94,37 @@ describe('Dilution and Hydrometer Correction', () => {
     const result = correctHydrometerReading(50, 20);
     expect(result.trueAbv).toBeCloseTo(50, 1);
     expect(Math.abs(result.correction)).toBeLessThan(0.1);
+  });
+
+  it('should calculate target volume dilution correctly', () => {
+    // Target 1000 mL of 60% ABV at 20°C from 96% Source
+    // This is the user's specific request.
+    const { 
+      sourceMassG, 
+      waterToAddG, 
+      finalMassG, 
+      ethanolMassG 
+    } = calculateTargetVolumeDilution(1000, 60, 96, 20);
+
+    // 1. Calculate Target Density & Mass
+    // rho(60, 20) ~ 0.909 g/mL
+    // Mass Target = 1000 * 0.909 = 909g
+    expect(finalMassG).toBeCloseTo(909, 0);
+
+    // 2. Calculate Ethanol Mass
+    // p(60) ~ 0.52
+    // Mass Ethanol = 909 * 0.52 ~ 472g
+    expect(ethanolMassG).toBeGreaterThan(470);
+    expect(ethanolMassG).toBeLessThan(480);
+
+    // 3. Calculate Source Mass
+    // p(96) ~ 0.938
+    // Mass Source = 473.6 / 0.9385 ~ 504.6g
+    expect(sourceMassG).toBeCloseTo(504.6, 1);
+
+    // 4. Calculate Water Mass
+    // Water = 909.1 - 504.6 = 404.5g
+    expect(waterToAddG).toBeCloseTo(404.5, 1);
   });
 });
 
