@@ -12,7 +12,7 @@ import {
   AlertTriangle,
   Download,
   X,
-  Github,
+  ExternalLink,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -399,7 +399,7 @@ export default function Home() {
               aria-label="Ver código fuente en GitHub"
               title="Ver código fuente en GitHub"
             >
-              <Github className="h-6 w-6" />
+              <ExternalLink className="h-6 w-6" />
             </a>
           </div>
         </div>
@@ -505,7 +505,7 @@ export default function Home() {
             rel="noopener noreferrer"
             className="hover:text-foreground mt-3 inline-flex items-center gap-1.5 transition-colors"
           >
-            <Github className="h-4 w-4" />
+            <ExternalLink className="h-4 w-4" />
             <span>Ver código fuente</span>
           </a>
         </footer>
